@@ -471,13 +471,17 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         ),
       _Titre('Quelles pièces ?'),
       const SizedBox(height: 4),
-      for (final type in kTypesPieces)
-        _Compteur(
-          type.nom,
-          niveau.nombre(type),
-          (v) => setState(() => niveau.ajuster(type, v)),
-          cle: 'piece-${type.id}',
-        ),
+      _DeuxColonnes(
+        children: [
+          for (final type in kTypesPieces)
+            _Compteur(
+              type.nom,
+              niveau.nombre(type),
+              (v) => setState(() => niveau.ajuster(type, v)),
+              cle: 'piece-${type.id}',
+            ),
+        ],
+      ),
       if (niveau.pieces.isNotEmpty) ...[
         const SizedBox(height: 18),
         _Titre('Noms et rangements'),
@@ -645,6 +649,29 @@ class _Ligne extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Une colonne sur téléphone, deux sur écran large (pliable déplié).
+class _DeuxColonnes extends StatelessWidget {
+  const _DeuxColonnes({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 620) {
+          return Column(children: children);
+        }
+        final largeur = (constraints.maxWidth - 24) / 2;
+        return Wrap(
+          spacing: 24,
+          children: [for (final enfant in children) SizedBox(width: largeur, child: enfant)],
+        );
+      },
     );
   }
 }

@@ -170,8 +170,9 @@ class ReponsesDomicile {
   }
 
   void changerEtages(int valeur) {
+    final suivait = habitables == etages;
     etages = valeur.clamp(1, 9);
-    if (habitables > etages) habitables = etages;
+    if (suivait || habitables > etages) habitables = etages;
   }
 
   void changerHabitables(int valeur) => habitables = valeur.clamp(0, etages);
@@ -221,9 +222,12 @@ class ReponsesDomicile {
     final interieur = _interieur();
     if (type.complet) {
       final ext = _exterieur();
-      if (ext != null) racine.enfants.add(ext);
-      racine.enfants.add(NoeudDomicile(type: TypeNoeud.lieu, nom: 'Intérieur', enfants: interieur));
       final gar = _garage();
+      if (ext != null) racine.enfants.add(ext);
+      // « Intérieur » vide et seul n’apporte rien : on ne le crée pas.
+      if (interieur.isNotEmpty || ext != null || gar != null) {
+        racine.enfants.add(NoeudDomicile(type: TypeNoeud.lieu, nom: 'Intérieur', enfants: interieur));
+      }
       if (gar != null) racine.enfants.add(gar);
     } else {
       racine.enfants.addAll(interieur);

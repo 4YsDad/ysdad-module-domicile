@@ -51,6 +51,13 @@ void main() {
     expect(copie.total, arbre.total);
   });
 
+  test('tout passer ne crée pas d’« Intérieur » vide', () {
+    final r = ReponsesDomicile()..exterieur = false;
+    expect(r.arbre().total, 1);
+    r.changerEtages(3);
+    expect(r.habitables, 3);
+  });
+
   test('renommer une pièce la garde hors de la renumérotation', () {
     final niveau = Niveau('etage-1', 'Rez-de-chaussée');
     final chambre = typePiece('chambre');
