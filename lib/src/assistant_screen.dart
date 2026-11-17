@@ -330,9 +330,10 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
           errorMaxLines: 3,
           filled: true,
           fillColor: colors.soft,
-          border: OutlineInputBorder(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+          enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
         ),
       ),
@@ -769,13 +770,16 @@ class _CarteChoix extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _Couleurs.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final fond = choisi ? scheme.primary : colors.soft;
+    final texte = choisi ? scheme.onPrimary : scheme.onSurface;
+    final detailCouleur = choisi ? scheme.onPrimary.withValues(alpha: 0.85) : colors.mute;
     return SizedBox(
       width: 156,
       child: Material(
-        color: choisi ? scheme.primaryContainer : colors.soft,
+        color: fond,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: choisi ? scheme.primary : Colors.transparent, width: 2),
+          side: BorderSide(color: choisi ? scheme.primary : scheme.outlineVariant, width: 1.5),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
@@ -787,12 +791,14 @@ class _CarteChoix extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(titre, style: colors.body(17, FontWeight.w800))),
-                    if (choisi) Icon(Icons.check_circle, color: scheme.primary, size: 20),
+                    Expanded(
+                      child: Text(titre, style: colors.body(17, FontWeight.w800, color: texte)),
+                    ),
+                    if (choisi) Icon(Icons.check_circle, color: scheme.onPrimary, size: 20),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(detail, style: colors.body(13, FontWeight.w500, color: colors.mute)),
+                Text(detail, style: colors.body(13, FontWeight.w500, color: detailCouleur)),
               ],
             ),
           ),
@@ -847,7 +853,8 @@ class _Couleurs {
   final ThemeData _theme;
 
   Color get mute => _theme.colorScheme.onSurfaceVariant;
-  Color get soft => _theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55);
+  Color get soft =>
+      Color.alphaBlend(_theme.colorScheme.primary.withValues(alpha: 0.08), _theme.colorScheme.surface);
   Color get accent => _theme.colorScheme.primary;
 
   TextStyle display(double size, FontWeight weight) =>
