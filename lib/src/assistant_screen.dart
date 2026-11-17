@@ -858,11 +858,17 @@ class _GrosBouton extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = ButtonStyle(
       minimumSize: WidgetStatePropertyAll(Size(large ? double.infinity : 0, 56)),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10)),
       textStyle: const WidgetStatePropertyAll(
         TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
     );
-    final texte = Text(label, textAlign: TextAlign.center);
+    // Une seule ligne : le libellé rétrécit au besoin sur les petits écrans
+    // au lieu de se couper en deux (« Retou / r »).
+    final texte = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(label, textAlign: TextAlign.center, maxLines: 1, softWrap: false),
+    );
     return switch (_style) {
       0 => FilledButton(style: style, onPressed: onPressed, child: texte),
       1 => OutlinedButton(style: style, onPressed: onPressed, child: texte),
