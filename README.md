@@ -19,7 +19,11 @@ son propre modèle de données. Le module ne touche à aucune base de données.
    rangement, autre). Chaque pièce peut être renommée ; ses rangements sont
    proposés en puces (p. ex. Cuisine : armoires, tiroirs, tiroir sous la
    cuisinière ; Chambre et Entrée : garde-robe ; Salle de bain : armoires de
-   la vanité ; Escalier : bol à clés).
+   la vanité). Le bouton **« + Contenant »** de chaque pièce ouvre une liste
+   (tablette, tiroir, bureau, mur, boîte, bac, sac, armoire, étagère, table,
+   meuble, pupitre, banc, frigo, congélo, alcôve, coffre, classeur, commode,
+   placard, penderie, panier, valise, crédence…) : un toucher l’ajoute, ou on
+   tape un autre nom au clavier. Les doublons deviennent « Tiroir 2 », etc.
 5. **Garage** : attaché ou détaché, mezzanines (compteur), murs utilisés comme
    zones, établi, armoires, étagères.
 6. **Résumé** en arbre, puis « Créer N lieux ».
@@ -56,6 +60,13 @@ if (resultat != null) {
     // noeud.description, noeud.photos, noeud.enfants
   }
 }
+```
+
+La même liste est offerte seule à l’appli hôte (p. ex. pour ajouter un
+sous-lieu) :
+
+```dart
+final nom = await choisirContenant(context); // null si on ferme
 ```
 
 ## Modèle

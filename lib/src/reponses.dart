@@ -35,11 +35,11 @@ const kTypesPieces = <TypePiece>[
   TypePiece('bureau', 'Bureau', ['Bureau (meuble)', 'Classeur', 'Étagères']),
   TypePiece('buanderie', 'Buanderie', ['Armoires', 'Tablettes']),
   TypePiece('couloir', 'Couloir', ['Placard']),
-  TypePiece('escalier', 'Escalier', ['Bol à clés'], coches: ['Bol à clés']),
+  TypePiece('escalier', 'Escalier', ['Tablette']),
   TypePiece(
     'entree',
     'Entrée',
-    ['Garde-robe', 'Banc à chaussures', 'Bol à clés'],
+    ['Garde-robe', 'Banc à chaussures'],
     coches: ['Garde-robe'],
   ),
   TypePiece('rangement', 'Rangement', ['Étagères']),
@@ -47,6 +47,47 @@ const kTypesPieces = <TypePiece>[
 ];
 
 TypePiece typePiece(String id) => kTypesPieces.firstWhere((type) => type.id == id);
+
+/// Contenants offerts par le bouton « + Contenant » (un toucher = ajouté).
+const kContenants = <String>[
+  'Tablette',
+  'Tiroir',
+  'Bureau',
+  'Mur',
+  'Boîte',
+  'Bac',
+  'Sac',
+  'Armoire',
+  'Étagère',
+  'Table',
+  'Meuble',
+  'Pupitre',
+  'Banc',
+  'Frigo',
+  'Congélo',
+  'Alcôve',
+  'Coffre',
+  'Classeur',
+  'Commode',
+  'Placard',
+  'Penderie',
+  'Panier',
+  'Valise',
+  'Crédence',
+  'Coffre-fort',
+  'Bibliothèque',
+];
+
+/// Donne un nom unique dans [existants] : « Tiroir », puis « Tiroir 2 »…
+String nomUnique(String nom, Iterable<String> existants) {
+  final pris = existants.map((e) => e.toLowerCase()).toSet();
+  if (!pris.contains(nom.toLowerCase())) return nom;
+  var i = 2;
+  while (pris.contains('$nom $i'.toLowerCase())) {
+    i++;
+  }
+  return '$nom $i';
+}
 
 class Piece {
   Piece(this.type, this.nom) {
@@ -58,7 +99,28 @@ class Piece {
 
   /// Vrai dès que la personne a changé le nom (on ne le renumérote plus).
   bool renomme = false;
+
+  /// Rangements suggérés cochés (sous-ensemble de [TypePiece.sousLieux]).
   final Set<String> sousLieux = <String>{};
+
+  /// Contenants ajoutés avec « + Contenant » ou tapés au clavier, dans l’ordre.
+  final List<String> contenants = <String>[];
+
+  /// Ajoute un contenant (nom rendu unique) et renvoie le nom retenu.
+  String ajouterContenant(String nom) {
+    final propre = nom.trim();
+    if (propre.isEmpty) return '';
+    final retenu = nomUnique(propre, [...sousLieux, ...contenants]);
+    contenants.add(retenu);
+    return retenu;
+  }
+
+  /// Tous les rangements de la pièce, dans l’ordre de création.
+  List<String> get rangements => [
+        for (final sous in type.sousLieux)
+          if (sousLieux.contains(sous)) sous,
+        ...contenants,
+      ];
 }
 
 class Niveau {
@@ -277,8 +339,7 @@ class ReponsesDomicile {
               type: TypeNoeud.piece,
               nom: piece.nom.trim().isEmpty ? piece.type.nom : piece.nom.trim(),
               enfants: [
-                for (final sous in piece.type.sousLieux)
-                  if (piece.sousLieux.contains(sous)) _rang(sous),
+                for (final sous in piece.rangements) _rang(sous),
               ],
             ),
         ];

@@ -4,6 +4,7 @@ library;
 
 export 'src/assistant_screen.dart'
     show AssistantDomicileScreen, OptionsAssistantDomicile, SourceQuestions, ouvrirAssistantDomicile;
+export 'src/contenants.dart' show choisirContenant;
 export 'src/modele.dart';
 export 'src/reponses.dart';
 export 'src/source.dart';

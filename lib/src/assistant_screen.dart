@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'contenants.dart';
 import 'modele.dart';
 import 'reponses.dart';
 import 'source.dart';
@@ -486,7 +487,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         const SizedBox(height: 18),
         _Titre('Noms et rangements'),
         Text(
-          'Facultatif : renommez une pièce ou cochez ses rangements.',
+          'Facultatif : renommez une pièce, cochez ses rangements ou touchez « + Contenant ».',
           style: colors.body(14, FontWeight.w500, color: colors.mute),
         ),
         const SizedBox(height: 8),
@@ -522,23 +523,46 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
                 piece.renomme = true;
               },
             ),
-            if (piece.type.sousLieux.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final sous in piece.type.sousLieux)
-                    FilterChip(
-                      label: Text(sous),
-                      selected: piece.sousLieux.contains(sous),
-                      onSelected: (on) => setState(() {
-                        on ? piece.sousLieux.add(sous) : piece.sousLieux.remove(sous);
-                      }),
-                    ),
-                ],
-              ),
-            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                for (final sous in piece.type.sousLieux)
+                  FilterChip(
+                    label: Text(sous),
+                    selected: piece.sousLieux.contains(sous),
+                    onSelected: (on) => setState(() {
+                      on ? piece.sousLieux.add(sous) : piece.sousLieux.remove(sous);
+                    }),
+                  ),
+                for (final nom in piece.contenants)
+                  InputChip(
+                    key: Key('ajoute-${piece.nom}-$nom'),
+                    label: Text(nom),
+                    selected: true,
+                    showCheckmark: true,
+                    deleteButtonTooltipMessage: 'Retirer',
+                    onDeleted: () => setState(() => piece.contenants.remove(nom)),
+                  ),
+                ActionChip(
+                  key: Key('plus-contenant-${piece.nom}'),
+                  avatar: Icon(Icons.add, color: Theme.of(context).colorScheme.primary),
+                  label: const Text('Contenant'),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                  onPressed: () async {
+                    final nom = await choisirContenant(context, titre: 'Contenant · ${piece.nom}');
+                    if (nom == null || !mounted) return;
+                    setState(() => piece.ajouterContenant(nom));
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       ),

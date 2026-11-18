@@ -36,7 +36,8 @@ void main() {
     expect(cuisine.type, TypeNoeud.piece);
     expect(cuisine.enfants.map((n) => n.nom), ['Armoires', 'Tiroirs', 'Tiroir sous la cuisinière']);
     expect(rez.enfants.firstWhere((n) => n.nom == 'Entrée').enfants.single.nom, 'Garde-robe');
-    expect(rez.enfants.firstWhere((n) => n.nom == 'Escalier').enfants.single.nom, 'Bol à clés');
+    expect(rez.enfants.firstWhere((n) => n.nom == 'Escalier').enfants, isEmpty);
+    expect(arbre.parcourir().any((e) => e.noeud.nom.contains('clés')), isFalse);
     final haut = interieur.enfants[2];
     expect(haut.enfants.map((n) => n.nom), ['Salle de bain', 'Chambre 1', 'Chambre 2']);
     expect(haut.enfants.first.enfants.single.nom, 'Armoires de la vanité');
@@ -184,5 +185,72 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(ferme, isTrue);
+  });
+
+  test('les contenants ajoutés suivent les rangements cochés, sans doublon', () {
+    final piece = Piece(typePiece('cuisine'), 'Cuisine');
+    expect(piece.ajouterContenant('Tiroir'), 'Tiroir');
+    expect(piece.ajouterContenant('Tiroir'), 'Tiroir 2');
+    expect(piece.ajouterContenant('  Coffre à outils '), 'Coffre à outils');
+    expect(piece.ajouterContenant('Armoires'), 'Armoires 2');
+    expect(piece.rangements,
+        ['Armoires', 'Tiroirs', 'Tiroir sous la cuisinière', 'Tiroir', 'Tiroir 2', 'Coffre à outils', 'Armoires 2']);
+    expect(kContenants, containsAll(['Tablette', 'Frigo', 'Congélo', 'Alcôve', 'Coffre', 'Penderie']));
+  });
+
+  testWidgets('« + Contenant » ajoute d’un toucher ou au clavier', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    ResultatDomicile? resultat;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => resultat = await ouvrirAssistantDomicile(context),
+            child: const Text('go'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    Future<void> suivant() async {
+      await tester.tap(find.byKey(const Key('assistant-next')));
+      await tester.pumpAndSettle();
+    }
+
+    await suivant(); // extérieur
+    await suivant(); // maison
+    await suivant(); // rez
+    final bouton = find.byKey(const Key('plus-contenant-Salon'));
+    await tester.scrollUntilVisible(bouton, 300, scrollable: find.byType(Scrollable).first);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(bouton), alignment: 0.5));
+    await tester.pumpAndSettle();
+    await tester.tap(bouton);
+    await tester.pumpAndSettle();
+    expect(find.text('Contenant · Salon'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('contenant-Frigo')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ajoute-Salon-Frigo')), findsOneWidget);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(bouton), alignment: 0.5));
+    await tester.pumpAndSettle();
+    await tester.tap(bouton);
+    await tester.pumpAndSettle();
+    expect(find.text('Contenant · Salon'), findsOneWidget, reason: 'deuxième ouverture');
+    await tester.tap(find.byKey(const Key('contenant-ajouter')));
+    await tester.pump();
+    expect(find.text('Écrivez un nom, ou touchez un contenant ci-dessous.'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('contenant-libre')), 'Coffre à jeux');
+    await tester.tap(find.byKey(const Key('contenant-ajouter')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ajoute-Salon-Coffre à jeux')), findsOneWidget);
+    await suivant(); // garage
+    await suivant(); // résumé
+    await tester.tap(find.byKey(const Key('assistant-create')));
+    await tester.pumpAndSettle();
+    final salon = resultat!.arbre.parcourir().firstWhere((e) => e.noeud.nom == 'Salon').noeud;
+    expect(salon.enfants.map((n) => n.nom), ['Frigo', 'Coffre à jeux']);
+    expect(salon.enfants.first.type, TypeNoeud.rangement);
   });
 }
