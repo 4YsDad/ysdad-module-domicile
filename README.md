@@ -22,8 +22,21 @@ son propre modèle de données. Le module ne touche à aucune base de données.
    la vanité). Le bouton **« + Contenant »** de chaque pièce ouvre une liste
    (tablette, tiroir, bureau, mur, boîte, bac, sac, armoire, étagère, table,
    meuble, pupitre, banc, frigo, congélo, alcôve, coffre, classeur, commode,
-   placard, penderie, panier, valise, crédence…) : un toucher l’ajoute, ou on
-   tape un autre nom au clavier. Les doublons deviennent « Tiroir 2 », etc.
+   placard, penderie, panier, valise, comptoir…) : un toucher l’ajoute, ou on
+   tape un autre nom au clavier.
+   Chaque rangement a ses **flèches ▼ ▲** pour en retirer ou en ajouter un
+   directement (« Garde-robe × 2 » donne Garde-robe 1 et Garde-robe 2).
+   Toucher un rangement ouvre sa page **« Détailler »**, un niveau à la fois :
+   - **Bureau** (ou pupitre) : nombre de tiroirs (Tiroir 1, Tiroir 2…),
+     dessus, dessous ; chaque tiroir se détaille à son tour.
+   - **Armoires** : nombre d’unités, nombre de comptoirs ; chaque unité a un
+     nom et un type (garde-manger en 1 à 5 sections bas, centre-bas, centre,
+     centre-haut, haut ; armoire du bas ; armoire de coin du bas ; armoire du
+     haut ; lavabo ; unité de tiroirs ; rack à épices) et ses tablettes et
+     tiroirs.
+   - Tout autre rangement : compartiments, tablettes, tiroirs.
+   Bureau et armoires ouvrent leur page dès qu’on les ajoute ou qu’on les touche.
+   Tout se retrouve dans l’arbre (`rangement` avec ses `enfants`).
 5. **Garage** : attaché ou détaché, mezzanines (compteur), murs utilisés comme
    zones, établi, armoires, étagères.
 6. **Résumé** en arbre, puis « Créer N lieux ».

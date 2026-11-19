@@ -1,3 +1,16 @@
+## 1.2.0
+
+- Flèches ▼ ▲ sur chaque rangement d’une pièce : en ajouter ou en retirer un
+  sans changer d’écran (`GroupeRangement`, `Piece.groupes`, `Piece.ajuster`).
+- Pages « Détailler » imbriquées (`Meuble`, `GenreMeuble`, `TypeUnite`) :
+  bureau (tiroirs, dessus, dessous), armoires (unités typées, comptoirs),
+  garde-manger (1 à 5 sections), tablettes et tiroirs de chaque unité,
+  compartiments d’un tiroir… Le tout devient des `rangement` enfants dans
+  l’arbre.
+- « Crédence » retirée de `kContenants`, « Comptoir » ajouté.
+- `Piece.ajouterContenant()` rend maintenant le `Meuble` créé ; ajouter un
+  nom déjà présent augmente son nombre (« Tiroir 1 », « Tiroir 2 »).
+
 ## 1.1.0
 
 - Bouton « + Contenant » dans chaque pièce : liste à un toucher (`kContenants`)

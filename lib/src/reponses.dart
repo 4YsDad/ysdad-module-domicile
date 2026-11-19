@@ -1,3 +1,4 @@
+import 'meubles.dart';
 import 'modele.dart';
 
 /// Type de pièce proposé dans l’assistant, avec ses rangements suggérés.
@@ -26,22 +27,12 @@ const kTypesPieces = <TypePiece>[
     ['Armoires de la vanité', 'Pharmacie'],
     coches: ['Armoires de la vanité'],
   ),
-  TypePiece(
-    'chambre',
-    'Chambre',
-    ['Garde-robe', 'Commode', 'Table de chevet'],
-    coches: ['Garde-robe'],
-  ),
+  TypePiece('chambre', 'Chambre', ['Garde-robe', 'Commode', 'Table de chevet'], coches: ['Garde-robe']),
   TypePiece('bureau', 'Bureau', ['Bureau (meuble)', 'Classeur', 'Étagères']),
   TypePiece('buanderie', 'Buanderie', ['Armoires', 'Tablettes']),
   TypePiece('couloir', 'Couloir', ['Placard']),
   TypePiece('escalier', 'Escalier', ['Tablette']),
-  TypePiece(
-    'entree',
-    'Entrée',
-    ['Garde-robe', 'Banc à chaussures'],
-    coches: ['Garde-robe'],
-  ),
+  TypePiece('entree', 'Entrée', ['Garde-robe', 'Banc à chaussures'], coches: ['Garde-robe']),
   TypePiece('rangement', 'Rangement', ['Étagères']),
   TypePiece('autre', 'Autre pièce', []),
 ];
@@ -66,6 +57,7 @@ const kContenants = <String>[
   'Frigo',
   'Congélo',
   'Alcôve',
+  'Comptoir',
   'Coffre',
   'Classeur',
   'Commode',
@@ -73,7 +65,6 @@ const kContenants = <String>[
   'Penderie',
   'Panier',
   'Valise',
-  'Crédence',
   'Coffre-fort',
   'Bibliothèque',
 ];
@@ -91,7 +82,9 @@ String nomUnique(String nom, Iterable<String> existants) {
 
 class Piece {
   Piece(this.type, this.nom) {
-    sousLieux.addAll(type.coches);
+    for (final sous in type.sousLieux) {
+      groupes.add(GroupeRangement(sous, suggere: true, nombre: type.coches.contains(sous) ? 1 : 0));
+    }
   }
 
   final TypePiece type;
@@ -100,27 +93,43 @@ class Piece {
   /// Vrai dès que la personne a changé le nom (on ne le renumérote plus).
   bool renomme = false;
 
-  /// Rangements suggérés cochés (sous-ensemble de [TypePiece.sousLieux]).
-  final Set<String> sousLieux = <String>{};
+  /// Rangements de la pièce : d’abord ceux suggérés par le type (même à 0),
+  /// puis ceux ajoutés avec « + Contenant », dans l’ordre.
+  final List<GroupeRangement> groupes = <GroupeRangement>[];
 
-  /// Contenants ajoutés avec « + Contenant » ou tapés au clavier, dans l’ordre.
-  final List<String> contenants = <String>[];
-
-  /// Ajoute un contenant (nom rendu unique) et renvoie le nom retenu.
-  String ajouterContenant(String nom) {
-    final propre = nom.trim();
-    if (propre.isEmpty) return '';
-    final retenu = nomUnique(propre, [...sousLieux, ...contenants]);
-    contenants.add(retenu);
-    return retenu;
+  GroupeRangement? groupe(String base) {
+    for (final g in groupes) {
+      if (g.base.toLowerCase() == base.trim().toLowerCase()) return g;
+    }
+    return null;
   }
 
-  /// Tous les rangements de la pièce, dans l’ordre de création.
-  List<String> get rangements => [
-        for (final sous in type.sousLieux)
-          if (sousLieux.contains(sous)) sous,
-        ...contenants,
-      ];
+  /// Ajoute un rangement : s’il existe déjà, son nombre augmente de 1.
+  /// Renvoie le rangement créé (ou `null` si le nom est vide).
+  Meuble? ajouterContenant(String nom) {
+    final propre = nom.trim();
+    if (propre.isEmpty) return null;
+    var g = groupe(propre);
+    if (g == null) {
+      g = GroupeRangement(propre);
+      groupes.add(g);
+    }
+    g.ajuster(g.nombre + 1);
+    return g.instances.last;
+  }
+
+  /// Change le nombre d’un rangement (flèches). À 0, un rangement ajouté à la
+  /// main disparaît ; un rangement suggéré reste proposé.
+  void ajuster(GroupeRangement g, int nombre) {
+    g.ajuster(nombre);
+    if (g.nombre == 0 && !g.suggere) groupes.remove(g);
+  }
+
+  /// Tous les rangements de la pièce (premier niveau), dans l’ordre.
+  List<Meuble> get meubles => [for (final g in groupes) ...g.instances];
+
+  /// Noms des rangements du premier niveau.
+  List<String> get rangements => [for (final m in meubles) m.nom];
 }
 
 class Niveau {
@@ -177,10 +186,10 @@ enum TypeDomicile {
 }
 
 String nomEtage(int numero) => switch (numero) {
-      1 => 'Rez-de-chaussée',
-      2 => '2e étage',
-      _ => '${numero}e étage',
-    };
+  1 => 'Rez-de-chaussée',
+  2 => '2e étage',
+  _ => '${numero}e étage',
+};
 
 /// Réponses de l’assistant ; [arbre] produit l’arbre du domicile.
 class ReponsesDomicile {
@@ -277,10 +286,7 @@ class ReponsesDomicile {
   }
 
   NoeudDomicile arbre() {
-    final racine = NoeudDomicile(
-      type: TypeNoeud.lieu,
-      nom: nom.trim().isEmpty ? type.libelle : nom.trim(),
-    );
+    final racine = NoeudDomicile(type: TypeNoeud.lieu, nom: nom.trim().isEmpty ? type.libelle : nom.trim());
     final interieur = _interieur();
     if (type.complet) {
       final ext = _exterieur();
@@ -334,15 +340,13 @@ class ReponsesDomicile {
     final liste = niveaux;
     final noeuds = <NoeudDomicile>[];
     List<NoeudDomicile> pieces(Niveau niveau) => [
-          for (final piece in niveau.pieces)
-            NoeudDomicile(
-              type: TypeNoeud.piece,
-              nom: piece.nom.trim().isEmpty ? piece.type.nom : piece.nom.trim(),
-              enfants: [
-                for (final sous in piece.rangements) _rang(sous),
-              ],
-            ),
-        ];
+      for (final piece in niveau.pieces)
+        NoeudDomicile(
+          type: TypeNoeud.piece,
+          nom: piece.nom.trim().isEmpty ? piece.type.nom : piece.nom.trim(),
+          enfants: [for (final meuble in piece.meubles) meuble.noeud()],
+        ),
+    ];
     if (liste.length == 1) {
       noeuds.addAll(pieces(liste.single));
     } else {
@@ -379,7 +383,6 @@ class ReponsesDomicile {
   }
 
   static List<NoeudDomicile> _numerotes(int nombre, String nom, TypeNoeud type) => [
-        for (var i = 1; i <= nombre; i++)
-          NoeudDomicile(type: type, nom: nombre == 1 ? nom : '$nom $i'),
-      ];
+    for (var i = 1; i <= nombre; i++) NoeudDomicile(type: type, nom: nombre == 1 ? nom : '$nom $i'),
+  ];
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'contenants.dart';
+import 'meubles.dart';
 import 'modele.dart';
 import 'reponses.dart';
 import 'source.dart';
 import 'vue.dart';
+
+part 'details.dart';
 
 /// Options de l’assistant.
 class OptionsAssistantDomicile {
@@ -35,9 +38,7 @@ Future<ResultatDomicile?> ouvrirAssistantDomicile(
   OptionsAssistantDomicile options = const OptionsAssistantDomicile(),
 }) {
   return Navigator.of(context).push<ResultatDomicile>(
-    MaterialPageRoute<ResultatDomicile>(
-      builder: (_) => AssistantDomicileScreen(options: options),
-    ),
+    MaterialPageRoute<ResultatDomicile>(builder: (_) => AssistantDomicileScreen(options: options)),
   );
 }
 
@@ -99,13 +100,13 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
   // ---------- Étapes ----------
 
   List<String> get _etapes => [
-        'type',
-        if (_a.type.complet) 'exterieur',
-        'maison',
-        for (final niveau in _a.niveaux) 'niveau:${niveau.cle}',
-        if (_a.type.complet) 'garage',
-        'resume',
-      ];
+    'type',
+    if (_a.type.complet) 'exterieur',
+    'maison',
+    for (final niveau in _a.niveaux) 'niveau:${niveau.cle}',
+    if (_a.type.complet) 'garage',
+    'resume',
+  ];
 
   String get _etapeCourante {
     final liste = _etapes;
@@ -273,17 +274,18 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
             ],
             Expanded(
               flex: 2,
-              child: derniere
-                  ? _GrosBouton.plein(
-                      key: const Key('assistant-create'),
-                      label: 'Créer ${_a.arbre().total} lieux',
-                      onPressed: () => _terminer(_a.arbre()),
-                    )
-                  : _GrosBouton.plein(
-                      key: const Key('assistant-next'),
-                      label: premiere ? 'Assistant rapide' : 'Suivant',
-                      onPressed: _suivant,
-                    ),
+              child:
+                  derniere
+                      ? _GrosBouton.plein(
+                        key: const Key('assistant-create'),
+                        label: 'Créer ${_a.arbre().total} lieux',
+                        onPressed: () => _terminer(_a.arbre()),
+                      )
+                      : _GrosBouton.plein(
+                        key: const Key('assistant-next'),
+                        label: premiere ? 'Assistant rapide' : 'Suivant',
+                        onPressed: _suivant,
+                      ),
             ),
           ],
         ),
@@ -317,7 +319,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         key: const Key('new-place-name'),
         controller: _nom,
         focusNode: _nomFocus,
-                textCapitalization: TextCapitalization.sentences,
+        textCapitalization: TextCapitalization.sentences,
         textInputAction: TextInputAction.done,
         scrollPadding: const EdgeInsets.only(bottom: 200),
         onChanged: (value) {
@@ -346,12 +348,12 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         style: colors.body(14, FontWeight.w500, color: colors.mute),
       ),
       if (widget.options.permettreSansAide) ...[
-      const SizedBox(height: 16),
-      _GrosBouton.contour(
-        key: const Key('create-place'),
-        label: 'Sans aide : créer seulement ce lieu',
-        onPressed: _creerSansAide,
-      ),
+        const SizedBox(height: 16),
+        _GrosBouton.contour(
+          key: const Key('create-place'),
+          label: 'Sans aide : créer seulement ce lieu',
+          onPressed: _creerSansAide,
+        ),
       ],
     ];
   }
@@ -359,12 +361,10 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
   List<Widget> _etapeExterieur() {
     final a = _a;
     return [
-      _OuiNon('Inclure l’extérieur', a.exterieur, (v) => setState(() => a.exterieur = v),
-          cle: 'ext'),
+      _OuiNon('Inclure l’extérieur', a.exterieur, (v) => setState(() => a.exterieur = v), cle: 'ext'),
       if (a.exterieur) ...[
         _OuiNon('Cour avant', a.courAvant, (v) => setState(() => a.courAvant = v), cle: 'cour-avant'),
-        _OuiNon('Cour arrière', a.courArriere, (v) => setState(() => a.courArriere = v),
-            cle: 'cour-arriere'),
+        _OuiNon('Cour arrière', a.courArriere, (v) => setState(() => a.courArriere = v), cle: 'cour-arriere'),
         _Ligne(
           label: 'Cours sur les côtés',
           largeurMin: 560,
@@ -378,8 +378,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         _Titre(a.courArriere ? 'Dans la cour arrière' : 'Dans la cour'),
         _OuiNon('Galerie', a.galerie, (v) => setState(() => a.galerie = v), cle: 'galerie'),
         _Compteur('Remises', a.remises, (v) => setState(() => a.remises = v), cle: 'remises'),
-        _Compteur('Coffres de rangement', a.coffres, (v) => setState(() => a.coffres = v),
-            cle: 'coffres'),
+        _Compteur('Coffres de rangement', a.coffres, (v) => setState(() => a.coffres = v), cle: 'coffres'),
         _OuiNon('Spa', a.spa, (v) => setState(() => a.spa = v), cle: 'spa'),
         _OuiNon('Piscine', a.piscine, (v) => setState(() => a.piscine = v), cle: 'piscine'),
         const SizedBox(height: 14),
@@ -407,10 +406,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
           runSpacing: 8,
           children: [
             for (final autre in a.autresExterieur)
-              InputChip(
-                label: Text(autre),
-                onDeleted: () => setState(() => a.autresExterieur.remove(autre)),
-              ),
+              InputChip(label: Text(autre), onDeleted: () => setState(() => a.autresExterieur.remove(autre))),
           ],
         ),
       ],
@@ -448,8 +444,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
       _OuiNon('Sous-sol', a.sousSol, (v) => setState(() => a.sousSol = v), cle: 'sous-sol'),
       if (a.type.complet) ...[
         _OuiNon('Grenier', a.grenier, (v) => setState(() => a.grenier = v), cle: 'grenier'),
-        _OuiNon('Cave (pas forcément habitable)', a.cave, (v) => setState(() => a.cave = v),
-            cle: 'cave'),
+        _OuiNon('Cave (pas forcément habitable)', a.cave, (v) => setState(() => a.cave = v), cle: 'cave'),
       ],
       const SizedBox(height: 12),
       Text(
@@ -487,7 +482,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         const SizedBox(height: 18),
         _Titre('Noms et rangements'),
         Text(
-          'Facultatif : renommez une pièce, cochez ses rangements ou touchez « + Contenant ».',
+          'Facultatif : renommez une pièce, ajustez ses rangements avec les flèches, touchez un rangement pour le détailler, ou touchez « + Contenant ».',
           style: colors.body(14, FontWeight.w500, color: colors.mute),
         ),
         const SizedBox(height: 8),
@@ -529,22 +524,15 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                for (final sous in piece.type.sousLieux)
-                  FilterChip(
-                    label: Text(sous),
-                    selected: piece.sousLieux.contains(sous),
-                    onSelected: (on) => setState(() {
-                      on ? piece.sousLieux.add(sous) : piece.sousLieux.remove(sous);
-                    }),
-                  ),
-                for (final nom in piece.contenants)
-                  InputChip(
-                    key: Key('ajoute-${piece.nom}-$nom'),
-                    label: Text(nom),
-                    selected: true,
-                    showCheckmark: true,
-                    deleteButtonTooltipMessage: 'Retirer',
-                    onDeleted: () => setState(() => piece.contenants.remove(nom)),
+                for (final g in List.of(piece.groupes))
+                  _ElementBouton(
+                    cle: '${piece.nom}-${g.base}',
+                    label: g.base,
+                    nombre: g.nombre,
+                    details: genreADetails(g.genre),
+                    onMoins: () => setState(() => piece.ajuster(g, g.nombre - 1)),
+                    onPlus: () => setState(() => piece.ajuster(g, g.nombre + 1)),
+                    onTap: () => _toucherGroupe(piece, g),
                   ),
                 ActionChip(
                   key: Key('plus-contenant-${piece.nom}'),
@@ -558,7 +546,12 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
                   onPressed: () async {
                     final nom = await choisirContenant(context, titre: 'Contenant · ${piece.nom}');
                     if (nom == null || !mounted) return;
-                    setState(() => piece.ajouterContenant(nom));
+                    Meuble? ajoute;
+                    setState(() => ajoute = piece.ajouterContenant(nom));
+                    final meuble = ajoute;
+                    if (meuble != null && genreADetails(meuble.genre)) {
+                      await _detailler(meuble, piece.nom);
+                    }
                   },
                 ),
               ],
@@ -567,6 +560,53 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
         ),
       ),
     );
+  }
+
+  /// Toucher le nom d’un rangement : à 0, il est ajouté (et sa page
+  /// « Détailler » s’ouvre s’il en a une) ; sinon on le détaille.
+  Future<void> _toucherGroupe(Piece piece, GroupeRangement g) async {
+    if (g.nombre == 0) {
+      setState(() => piece.ajuster(g, 1));
+      if (genreADetails(g.genre)) await _detailler(g.instances.single, piece.nom);
+      return;
+    }
+    final meuble = g.nombre == 1 ? g.instances.single : await _choisirInstance(g);
+    if (meuble != null && mounted) await _detailler(meuble, piece.nom);
+  }
+
+  Future<Meuble?> _choisirInstance(GroupeRangement g) {
+    return showModalBottomSheet<Meuble>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (context) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    'Lequel détailler ?',
+                    style: _Couleurs.of(context).display(19, FontWeight.w700),
+                  ),
+                ),
+                for (final m in g.instances)
+                  ListTile(
+                    key: Key('choix-${m.nom}'),
+                    title: Text(m.nom),
+                    subtitle: m.resume.isEmpty ? null : Text(m.resume),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).pop(m),
+                  ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _detailler(Meuble meuble, String chemin) async {
+    await ouvrirDetail(context, meuble, chemin: chemin);
+    if (mounted) setState(() {});
   }
 
   List<Widget> _etapeGarage() {
@@ -583,10 +623,14 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
             onChanged: (v) => setState(() => a.garageAttache = v),
           ),
         ),
-        _Compteur('Mezzanines', a.mezzanines, (v) => setState(() => a.mezzanines = v),
-            cle: 'mezzanines'),
-        _Compteur('Murs à utiliser comme zones', a.murs, (v) => setState(() => a.murs = v),
-            max: 8, cle: 'murs'),
+        _Compteur('Mezzanines', a.mezzanines, (v) => setState(() => a.mezzanines = v), cle: 'mezzanines'),
+        _Compteur(
+          'Murs à utiliser comme zones',
+          a.murs,
+          (v) => setState(() => a.murs = v),
+          max: 8,
+          cle: 'murs',
+        ),
         _OuiNon('Établi', a.etabli, (v) => setState(() => a.etabli = v), cle: 'etabli'),
         _OuiNon('Armoires', a.armoires, (v) => setState(() => a.armoires = v), cle: 'armoires'),
         _OuiNon('Étagères', a.etageres, (v) => setState(() => a.etageres = v), cle: 'etageres'),
@@ -664,13 +708,7 @@ class _Ligne extends StatelessWidget {
               children: [texte, const SizedBox(height: 6), child],
             );
           }
-          return Row(
-            children: [
-              Expanded(child: texte),
-              const SizedBox(width: 8),
-              child,
-            ],
-          );
+          return Row(children: [Expanded(child: texte), const SizedBox(width: 8), child]);
         },
       ),
     );
@@ -716,8 +754,7 @@ class _Segments<T> extends StatelessWidget {
         visualDensity: VisualDensity.standard,
       ),
       segments: [
-        for (final entry in choix.entries)
-          ButtonSegment<T>(value: entry.key, label: Text(entry.value)),
+        for (final entry in choix.entries) ButtonSegment<T>(value: entry.key, label: Text(entry.value)),
       ],
       selected: {valeur},
       onSelectionChanged: (choisis) => onChanged(choisis.first),
@@ -738,24 +775,13 @@ class _OuiNon extends StatelessWidget {
     return _Ligne(
       key: Key('q-$cle'),
       label: label,
-      child: _Segments<bool>(
-        valeur: valeur,
-        choix: const {false: 'Non', true: 'Oui'},
-        onChanged: onChanged,
-      ),
+      child: _Segments<bool>(valeur: valeur, choix: const {false: 'Non', true: 'Oui'}, onChanged: onChanged),
     );
   }
 }
 
 class _Compteur extends StatelessWidget {
-  const _Compteur(
-    this.label,
-    this.valeur,
-    this.onChanged, {
-    required this.cle,
-    this.min = 0,
-    this.max = 9,
-  });
+  const _Compteur(this.label, this.valeur, this.onChanged, {required this.cle, this.min = 0, this.max = 9});
 
   final String label;
   final int valeur;
@@ -842,9 +868,7 @@ class _CarteChoix extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: Text(titre, style: colors.body(17, FontWeight.w800, color: texte)),
-                    ),
+                    Expanded(child: Text(titre, style: colors.body(17, FontWeight.w800, color: texte))),
                     if (choisi) Icon(Icons.check_circle, color: scheme.onPrimary, size: 20),
                   ],
                 ),
@@ -861,17 +885,13 @@ class _CarteChoix extends StatelessWidget {
 
 class _GrosBouton extends StatelessWidget {
   const _GrosBouton.plein({super.key, required this.label, required this.onPressed})
-      : _style = 0,
-        large = true;
-  const _GrosBouton.contour({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.large = true,
-  }) : _style = 1;
+    : _style = 0,
+      large = true;
+  const _GrosBouton.contour({super.key, required this.label, required this.onPressed, this.large = true})
+    : _style = 1;
   const _GrosBouton.texte({super.key, required this.label, required this.onPressed})
-      : _style = 2,
-        large = true;
+    : _style = 2,
+      large = true;
 
   final String label;
   final VoidCallback? onPressed;
@@ -883,9 +903,7 @@ class _GrosBouton extends StatelessWidget {
     final style = ButtonStyle(
       minimumSize: WidgetStatePropertyAll(Size(large ? double.infinity : 0, 56)),
       padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10)),
-      textStyle: const WidgetStatePropertyAll(
-        TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      ),
+      textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
     );
     // Une seule ligne : le libellé rétrécit au besoin sur les petits écrans
     // au lieu de se couper en deux (« Retou / r »).
@@ -918,6 +936,9 @@ class _Couleurs {
       (_theme.textTheme.titleLarge ?? const TextStyle()).copyWith(fontSize: size, fontWeight: weight);
 
   TextStyle body(double size, FontWeight weight, {Color? color}) =>
-      (_theme.textTheme.bodyLarge ?? const TextStyle())
-          .copyWith(fontSize: size, fontWeight: weight, color: color);
+      (_theme.textTheme.bodyLarge ?? const TextStyle()).copyWith(
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+      );
 }
