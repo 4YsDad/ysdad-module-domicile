@@ -3,7 +3,8 @@ import 'modele.dart';
 /// Genre de détail d’un rangement : décide des questions posées quand on le
 /// « détaille » (bureau, ensemble d’armoires, unité d’armoire…).
 enum GenreMeuble {
-  /// Rangement ordinaire : compartiments, tablettes et tiroirs.
+  /// Rangement ordinaire : tablettes (espaces), tiroirs, compartiments, et
+  /// tringles pour une garde-robe.
   simple,
 
   /// Bureau : tiroirs, dessus, dessous.
@@ -18,7 +19,7 @@ enum GenreMeuble {
 
 /// Type d’une unité d’armoire, avec ses valeurs de départ.
 enum TypeUnite {
-  gardeManger('Garde-manger'),
+  gardeManger('Garde-manger', tablettes: 2),
   armoireBas('Armoire du bas', tablettes: 1),
   armoireCoinBas('Armoire de coin du bas', tablettes: 1),
   armoireHaut('Armoire du haut', tablettes: 2),
@@ -33,14 +34,20 @@ enum TypeUnite {
   final int tiroirs;
 }
 
-/// Noms des sections d’un garde-manger selon leur nombre (1 à 5).
-List<String> nomsSections(int nombre) => switch (nombre.clamp(1, 5)) {
-  1 => const ['Centre'],
-  2 => const ['Bas', 'Haut'],
-  3 => const ['Bas', 'Centre', 'Haut'],
-  4 => const ['Bas', 'Centre-bas', 'Centre-haut', 'Haut'],
-  _ => const ['Bas', 'Centre-bas', 'Centre', 'Centre-haut', 'Haut'],
-};
+/// Noms des espaces de rangement, du bas vers le haut, comme au marché :
+/// 1 → aucun nom de position ; 2 → Bas, Haut ; 3 → Bas, Centre, Haut ;
+/// 4 → Bas, Centre-bas, Centre-haut, Haut ; 5 → Bas, Centre-bas, Centre,
+/// Centre-haut, Haut ; plus de 5 → Bas, Centre 1… Centre n, Haut.
+List<String> nomsEspaces(int nombre) {
+  if (nombre <= 1) return const [];
+  return switch (nombre) {
+    2 => const ['Bas', 'Haut'],
+    3 => const ['Bas', 'Centre', 'Haut'],
+    4 => const ['Bas', 'Centre-bas', 'Centre-haut', 'Haut'],
+    5 => const ['Bas', 'Centre-bas', 'Centre', 'Centre-haut', 'Haut'],
+    _ => ['Bas', for (var i = 1; i <= nombre - 2; i++) 'Centre $i', 'Haut'],
+  };
+}
 
 String _sansAccents(String texte) {
   const de = 'àâäéèêëîïôöùûüç';
@@ -62,19 +69,38 @@ GenreMeuble genreDuNom(String nom) {
   return GenreMeuble.simple;
 }
 
+/// Vrai pour les rangements où l’on accroche des cintres (garde-robe,
+/// penderie, placard…) : on leur propose des tringles.
+bool accepteTringles(String nom) {
+  final n = _sansAccents(nom.trim());
+  return n.startsWith('garde-robe') ||
+      n.startsWith('garde robe') ||
+      n.startsWith('penderie') ||
+      n.startsWith('placard') ||
+      n.startsWith('vestiaire') ||
+      n.startsWith('walk-in') ||
+      n.startsWith('dressing');
+}
+
 /// Vrai si ce genre ouvre sa page « Détailler » dès qu’on l’ajoute.
 bool genreADetails(GenreMeuble genre) => genre != GenreMeuble.simple;
 
-/// Un rangement concret (« Armoires », « Tiroir 2 », « Garde-manger »…) avec
-/// ses détails. Chaque niveau se détaille séparément, un à la fois.
+/// Un rangement concret (« Armoires », « Tiroir 2 », « Bas »…) avec ses
+/// détails. Chaque niveau se détaille séparément, un à la fois, et chaque nom
+/// peut être changé.
 class Meuble {
-  Meuble(this.nom, {GenreMeuble? genre, TypeUnite? type})
-    : genre = genre ?? (type != null ? GenreMeuble.unite : genreDuNom(nom)),
+  Meuble(this.nom, {GenreMeuble? genre, TypeUnite? type, String? base})
+    : base = base ?? nom,
+      genre = genre ?? (type != null ? GenreMeuble.unite : genreDuNom(nom)),
       typeUnite = type ?? TypeUnite.armoireBas {
     if (this.genre == GenreMeuble.unite) _valeursDuType();
   }
 
   String nom;
+
+  /// Nom d’origine (« Garde-robe » pour « Garde-robe 2 ») : sert à savoir
+  /// quelles questions poser, même après un changement de nom.
+  final String base;
 
   /// Vrai dès que la personne a changé le nom (on ne le renumérote plus).
   bool renomme = false;
@@ -87,26 +113,31 @@ class Meuble {
   /// Vrai dès qu’on a ouvert la page « Détailler » de ce rangement.
   bool detaille = false;
 
-  final List<Meuble> tablettes = <Meuble>[];
-  final List<Meuble> tiroirs = <Meuble>[];
-  final List<Meuble> compartiments = <Meuble>[];
+  /// Nombre de tablettes ; elles créent [espaces] (tablettes + 1 espaces).
+  int tablettes = 0;
 
-  /// Sections d’un garde-manger (bas, centre, haut…).
-  final List<Meuble> sections = <Meuble>[];
+  /// Espaces de rangement entre les tablettes, du bas vers le haut.
+  final List<Meuble> espaces = <Meuble>[];
+
+  final List<Meuble> tiroirs = <Meuble>[];
+  final List<Meuble> tringles = <Meuble>[];
+  final List<Meuble> compartiments = <Meuble>[];
 
   /// Unités d’un ensemble d’armoires.
   final List<Meuble> unites = <Meuble>[];
 
-  int comptoirs = 0;
-  bool dessus = false;
-  bool dessous = false;
+  /// Comptoirs d’un ensemble d’armoires.
+  final List<Meuble> comptoirs = <Meuble>[];
 
-  bool get estGardeManger => genre == GenreMeuble.unite && typeUnite == TypeUnite.gardeManger;
+  /// Dessus et dessous d’un bureau (null = non).
+  Meuble? dessus;
+  Meuble? dessous;
+
+  bool get aDesTringles => genre == GenreMeuble.simple && accepteTringles(base);
 
   void _valeursDuType() {
     ajusterTablettes(typeUnite.tablettes);
     ajusterTiroirs(typeUnite.tiroirs);
-    ajusterSections(typeUnite == TypeUnite.gardeManger ? 3 : 0);
   }
 
   /// Change le type d’une unité ; reprend les valeurs de départ du type.
@@ -116,34 +147,55 @@ class Meuble {
     _valeursDuType();
   }
 
+  static Meuble _feuille(String nom) => Meuble(nom, genre: GenreMeuble.simple);
+
   static void _ajuster(List<Meuble> liste, int nombre, String base, {int max = 20}) {
     final voulu = nombre.clamp(0, max);
-    if (voulu < liste.length) {
-      liste.removeRange(voulu, liste.length);
-    }
+    if (voulu < liste.length) liste.removeRange(voulu, liste.length);
     while (liste.length < voulu) {
-      liste.add(Meuble(base, genre: GenreMeuble.simple));
+      liste.add(_feuille(base));
     }
     for (var i = 0; i < liste.length; i++) {
       if (!liste[i].renomme) liste[i].nom = '$base ${i + 1}';
     }
   }
 
-  void ajusterTablettes(int n) => _ajuster(tablettes, n, 'Tablette');
-  void ajusterTiroirs(int n) => _ajuster(tiroirs, n, 'Tiroir');
-  void ajusterCompartiments(int n) => _ajuster(compartiments, n, 'Compartiment');
-
-  void ajusterSections(int n) {
-    final voulu = n.clamp(0, 5);
-    if (voulu < sections.length) sections.removeRange(voulu, sections.length);
-    while (sections.length < voulu) {
-      sections.add(Meuble('Section', genre: GenreMeuble.simple));
+  /// N tablettes donnent N + 1 espaces nommés du bas vers le haut ; sans
+  /// tablette, le rangement est un seul espace (pas de sous-espace).
+  void ajusterTablettes(int n) {
+    tablettes = n.clamp(0, 20);
+    final voulu = tablettes == 0 ? 0 : tablettes + 1;
+    // Le haut reste en haut et le bas en bas : on ajoute ou retire les
+    // espaces du milieu (un nom changé suit son espace).
+    if (voulu == 0) {
+      espaces.clear();
+    } else if (espaces.isEmpty) {
+      espaces.addAll([for (var i = 0; i < voulu; i++) _feuille('Espace')]);
+    } else {
+      while (espaces.length > voulu) {
+        espaces.removeAt(espaces.length - 2);
+      }
+      while (espaces.length < voulu) {
+        espaces.insert(espaces.length - 1, _feuille('Espace'));
+      }
     }
-    final noms = voulu == 0 ? const <String>[] : nomsSections(voulu);
-    for (var i = 0; i < sections.length; i++) {
-      if (!sections[i].renomme) sections[i].nom = noms[i];
+    final noms = nomsEspaces(voulu);
+    for (var i = 0; i < espaces.length; i++) {
+      if (!espaces[i].renomme) espaces[i].nom = noms[i];
     }
   }
+
+  void ajusterTiroirs(int n) => _ajuster(tiroirs, n, 'Tiroir');
+  void ajusterTringles(int n) => _ajuster(tringles, n, 'Tringle', max: 6);
+  void ajusterCompartiments(int n) => _ajuster(compartiments, n, 'Compartiment');
+
+  void ajusterComptoirs(int n) {
+    _ajuster(comptoirs, n, 'Comptoir', max: 6);
+    if (comptoirs.length == 1 && !comptoirs.single.renomme) comptoirs.single.nom = 'Comptoir';
+  }
+
+  void changerDessus(bool oui) => dessus = oui ? (dessus ?? _feuille('Dessus')) : null;
+  void changerDessous(bool oui) => dessous = oui ? (dessous ?? _feuille('Dessous')) : null;
 
   /// Ajoute (ou retire) des unités ; les nouvelles sont des « Armoire du bas ».
   void ajusterUnites(int n) {
@@ -166,48 +218,51 @@ class Meuble {
     }
   }
 
-  /// Enfants que ce rangement produira, dans l’ordre affiché.
-  List<Meuble> get sousRangements => [...sections, ...unites, ...compartiments, ...tablettes, ...tiroirs];
+  /// Tout ce que ce rangement contient, dans l’ordre de l’arbre.
+  List<Meuble> get sousRangements => [
+    if (dessus != null) dessus!,
+    ...comptoirs,
+    ...unites,
+    ...espaces,
+    ...tringles,
+    ...tiroirs,
+    ...compartiments,
+    if (dessous != null) dessous!,
+  ];
+
+  /// Sous-rangements qui se détaillent à leur tour (pas le dessus, les
+  /// comptoirs ni le dessous).
+  bool detaillable(Meuble enfant) => enfant != dessus && enfant != dessous && !comptoirs.contains(enfant);
 
   /// Nombre de sous-rangements, tous niveaux compris.
-  int get totalSous => sousRangements.fold<int>(
-    (genre == GenreMeuble.bureau ? (dessus ? 1 : 0) + (dessous ? 1 : 0) : 0) + comptoirs,
-    (somme, m) => somme + 1 + m.totalSous,
-  );
+  int get totalSous => sousRangements.fold<int>(0, (somme, m) => somme + 1 + m.totalSous);
 
-  /// Résumé court sous le nom (« 3 tiroirs, dessus »).
+  static String _n(int n, String mot) => '$n $mot${n > 1 ? 's' : ''}';
+
+  /// Résumé court sous le nom (« 2 tablettes (3 espaces), 1 tringle »).
   String get resume {
     final morceaux = <String>[
-      if (genre == GenreMeuble.unite) typeUnite.libelle,
-      if (unites.isNotEmpty) '${unites.length} unité${unites.length > 1 ? 's' : ''}',
-      if (comptoirs > 0) '$comptoirs comptoir${comptoirs > 1 ? 's' : ''}',
-      if (sections.isNotEmpty) '${sections.length} section${sections.length > 1 ? 's' : ''}',
-      if (compartiments.isNotEmpty)
-        '${compartiments.length} compartiment${compartiments.length > 1 ? 's' : ''}',
-      if (tablettes.isNotEmpty) '${tablettes.length} tablette${tablettes.length > 1 ? 's' : ''}',
-      if (tiroirs.isNotEmpty) '${tiroirs.length} tiroir${tiroirs.length > 1 ? 's' : ''}',
-      if (genre == GenreMeuble.bureau && dessus) 'dessus',
-      if (genre == GenreMeuble.bureau && dessous) 'dessous',
+      if (genre == GenreMeuble.unite && nom != typeUnite.libelle) typeUnite.libelle,
+      if (unites.isNotEmpty) _n(unites.length, 'unité'),
+      if (comptoirs.isNotEmpty) _n(comptoirs.length, 'comptoir'),
+      if (tablettes > 0) '${_n(tablettes, 'tablette')} (${espaces.length} espaces)',
+      if (tringles.isNotEmpty) _n(tringles.length, 'tringle'),
+      if (tiroirs.isNotEmpty) _n(tiroirs.length, 'tiroir'),
+      if (compartiments.isNotEmpty) _n(compartiments.length, 'compartiment'),
+      if (dessus != null) 'dessus',
+      if (dessous != null) 'dessous',
     ];
     return morceaux.join(', ');
   }
 
   NoeudDomicile noeud() {
-    final nomPropre = nom.trim().isEmpty ? 'Rangement' : nom.trim();
-    final enfants = <NoeudDomicile>[
-      if (genre == GenreMeuble.bureau && dessus) NoeudDomicile(type: TypeNoeud.rangement, nom: 'Dessus'),
-      if (comptoirs == 1) NoeudDomicile(type: TypeNoeud.rangement, nom: 'Comptoir'),
-      if (comptoirs > 1)
-        for (var i = 1; i <= comptoirs; i++) NoeudDomicile(type: TypeNoeud.rangement, nom: 'Comptoir $i'),
-      for (final m in sousRangements) m.noeud(),
-      if (genre == GenreMeuble.bureau && dessous) NoeudDomicile(type: TypeNoeud.rangement, nom: 'Dessous'),
-    ];
+    final nomPropre = nom.trim().isEmpty ? (base.trim().isEmpty ? 'Rangement' : base) : nom.trim();
     return NoeudDomicile(
       type: TypeNoeud.rangement,
       nom: nomPropre,
       description:
           genre == GenreMeuble.unite && renomme && nomPropre != typeUnite.libelle ? typeUnite.libelle : null,
-      enfants: enfants,
+      enfants: [for (final m in sousRangements) m.noeud()],
     );
   }
 }

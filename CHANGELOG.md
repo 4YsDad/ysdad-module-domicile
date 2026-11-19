@@ -1,3 +1,17 @@
+## 1.3.0
+
+- Étages : une seule question, « Combien d’étages habitables y a-t-il ? »,
+  puis le nom de chaque étage (choix en un toucher ou au clavier). Les
+  anciennes questions sous-sol / étages habitables sont retirées
+  (`nomsEtages`, `nommerEtage`, `kChoixEtages`).
+- « Cave » devient « Cave de service ».
+- Tringles (flèches) pour une garde-robe, une penderie ou un placard.
+- Règle des espaces pour tous les meubles : N tablettes = N + 1 espaces
+  nommés du bas vers le haut (`nomsEspaces`). Le garde-manger suit la même
+  règle (les « sections » de 1.2.0 sont retirées).
+- Chaque élément ajouté dans un objet se renomme (crayon, `renommerMeuble`),
+  et chaque page « Détailler » a un champ Nom.
+
 ## 1.2.0
 
 - Flèches ▼ ▲ sur chaque rangement d’une pièce : en ajouter ou en retirer un

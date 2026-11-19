@@ -13,7 +13,10 @@ son propre modèle de données. Le module ne touche à aucune base de données.
 2. **Extérieur** : cour avant, cour arrière, cours sur les côtés (aucune, un
    côté, les deux) ; dans la cour : galerie, remises (compteur), coffres de
    rangement (compteur), spa, piscine, et « Autre » en texte libre.
-3. **Maison** : nombre d’étages, étages habitables, sous-sol, grenier, cave.
+3. **Maison** : « Combien d’étages habitables y a-t-il ? » (flèches), puis le
+   nom de chaque étage, du plus bas au plus haut : un toucher (Sous-sol,
+   Rez-de-chaussée, Premier étage, Deuxième étage, Troisième étage…) ou un nom
+   écrit au clavier. En plus : grenier et cave de service (oui ou non).
 4. **Pièces de chaque étage** : compteurs (cuisine, salon, salle à manger,
    salle de bain, chambre, bureau, buanderie, couloir, escalier, entrée,
    rangement, autre). Chaque pièce peut être renommée ; ses rangements sont
@@ -30,11 +33,17 @@ son propre modèle de données. Le module ne touche à aucune base de données.
    - **Bureau** (ou pupitre) : nombre de tiroirs (Tiroir 1, Tiroir 2…),
      dessus, dessous ; chaque tiroir se détaille à son tour.
    - **Armoires** : nombre d’unités, nombre de comptoirs ; chaque unité a un
-     nom et un type (garde-manger en 1 à 5 sections bas, centre-bas, centre,
-     centre-haut, haut ; armoire du bas ; armoire de coin du bas ; armoire du
-     haut ; lavabo ; unité de tiroirs ; rack à épices) et ses tablettes et
-     tiroirs.
-   - Tout autre rangement : compartiments, tablettes, tiroirs.
+     nom et un type (garde-manger, armoire du bas, armoire de coin du bas,
+     armoire du haut, lavabo, unité de tiroirs, rack à épices) avec ses
+     tablettes et tiroirs.
+   - Tout autre rangement : tablettes, tiroirs, compartiments, et
+     **tringles** pour une garde-robe, une penderie ou un placard.
+   - **Règle des espaces** (tous les meubles) : N tablettes créent N + 1
+     espaces, nommés du bas vers le haut : 2 → Bas, Haut ; 3 → Bas, Centre,
+     Haut ; 4 → Bas, Centre-bas, Centre-haut, Haut ; 5 → Bas, Centre-bas,
+     Centre, Centre-haut, Haut ; plus → Bas, Centre 1… Centre n, Haut.
+   - Chaque élément ajouté (espace, tiroir, tringle, unité…) se renomme d’un
+     toucher sur le crayon (« Tablette du haut »).
    Bureau et armoires ouvrent leur page dès qu’on les ajoute ou qu’on les touche.
    Tout se retrouve dans l’arbre (`rangement` avec ses `enfants`).
 5. **Garage** : attaché ou détaché, mezzanines (compteur), murs utilisés comme

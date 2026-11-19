@@ -75,6 +75,7 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
   final _nom = TextEditingController();
   final _nomFocus = FocusNode();
   final _autreExt = TextEditingController();
+  final _ctrlEtages = <TextEditingController>[];
   bool _nomModifie = false;
   String? _erreurNom;
   int _etape = 0;
@@ -94,6 +95,9 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
     _nom.dispose();
     _nomFocus.dispose();
     _autreExt.dispose();
+    for (final c in _ctrlEtages) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -154,10 +158,10 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
       if (etape == 'garage') _a.garage = false;
       if (etape == 'maison') {
         _a.changerEtages(1);
-        _a.changerHabitables(1);
+        _a.nommerEtage(0, nomEtage(1));
+        if (_ctrlEtages.isNotEmpty) _ctrlEtages.first.text = nomEtage(1);
         _a.grenier = false;
         _a.cave = false;
-        _a.sousSol = false;
       }
       _niveau(etape)?.pieces.clear();
     });
@@ -422,29 +426,97 @@ class _AssistantDomicileScreenState extends State<AssistantDomicileScreen> {
     });
   }
 
+  TextEditingController _ctrlEtage(int i) {
+    while (_ctrlEtages.length <= i) {
+      _ctrlEtages.add(TextEditingController(text: _a.nomsEtages[_ctrlEtages.length]));
+    }
+    return _ctrlEtages[i];
+  }
+
   List<Widget> _etapeMaison() {
     final a = _a;
     final colors = _Couleurs.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return [
       _Compteur(
-        'Nombre d’étages (sans le sous-sol)',
+        'Combien d’étages habitables y a-t-il ?',
         a.etages,
-        (v) => setState(() => a.changerEtages(v)),
+        (v) => setState(() {
+          a.changerEtages(v);
+          for (var i = 0; i < a.etages; i++) {
+            if (i < _ctrlEtages.length && _ctrlEtages[i].text != a.nomsEtages[i]) {
+              _ctrlEtages[i].text = a.nomsEtages[i];
+            }
+          }
+        }),
         min: 1,
         max: 9,
         cle: 'etages',
       ),
-      _Compteur(
-        'Étages habitables',
-        a.habitables,
-        (v) => setState(() => a.changerHabitables(v)),
-        max: a.etages,
-        cle: 'habitables',
+      Text(
+        'Comptez le sous-sol s’il est aménagé.',
+        style: colors.body(14, FontWeight.w500, color: colors.mute),
       ),
-      _OuiNon('Sous-sol', a.sousSol, (v) => setState(() => a.sousSol = v), cle: 'sous-sol'),
+      const SizedBox(height: 14),
+      _Titre(a.etages == 1 ? 'Nom de l’étage' : 'Nom de chaque étage'),
+      Text(
+        a.etages == 1
+            ? 'Touchez un nom ou écrivez le vôtre.'
+            : 'Du plus bas au plus haut. Touchez un nom ou écrivez le vôtre.',
+        style: colors.body(14, FontWeight.w500, color: colors.mute),
+      ),
+      const SizedBox(height: 8),
+      for (var i = 0; i < a.etages; i++)
+        Card(
+          key: Key('carte-etage-$i'),
+          elevation: 0,
+          color: colors.soft,
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  key: Key('etage-nom-$i'),
+                  controller: _ctrlEtage(i),
+                  textCapitalization: TextCapitalization.sentences,
+                  scrollPadding: const EdgeInsets.only(bottom: 200),
+                  style: colors.body(16, FontWeight.w700),
+                  decoration: InputDecoration(
+                    labelText: a.etages == 1 ? 'Nom de l’étage' : 'Étage ${i + 1}',
+                    suffixIcon: const Icon(Icons.edit_outlined, size: 18),
+                  ),
+                  onChanged: (value) => setState(() => a.nommerEtage(i, value)),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final choix in kChoixEtages)
+                      ChoiceChip(
+                        key: Key('etage-$i-$choix'),
+                        label: Text(choix),
+                        selected: a.nomsEtages[i].trim() == choix,
+                        selectedColor: scheme.secondaryContainer,
+                        onSelected:
+                            (_) => setState(() {
+                              a.nommerEtage(i, choix);
+                              _ctrlEtage(i).text = choix;
+                            }),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       if (a.type.complet) ...[
+        const SizedBox(height: 6),
         _OuiNon('Grenier', a.grenier, (v) => setState(() => a.grenier = v), cle: 'grenier'),
-        _OuiNon('Cave (pas forcément habitable)', a.cave, (v) => setState(() => a.cave = v), cle: 'cave'),
+        _OuiNon('Cave de service', a.cave, (v) => setState(() => a.cave = v), cle: 'cave'),
       ],
       const SizedBox(height: 12),
       Text(

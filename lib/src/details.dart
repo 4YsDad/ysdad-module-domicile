@@ -16,6 +16,63 @@ Future<void> ouvrirDetail(
   );
 }
 
+/// Petite fenêtre pour changer le nom d’un élément (« Tablette du haut »).
+/// Rend vrai si le nom a changé.
+Future<bool> renommerMeuble(BuildContext context, Meuble meuble) async {
+  final nouveau = await showDialog<String>(
+    context: context,
+    builder: (context) => _DialogueNom(initial: meuble.nom),
+  );
+  final propre = nouveau?.trim() ?? '';
+  if (propre.isEmpty || propre == meuble.nom) return false;
+  meuble
+    ..nom = propre
+    ..renomme = true;
+  return true;
+}
+
+class _DialogueNom extends StatefulWidget {
+  const _DialogueNom({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_DialogueNom> createState() => _DialogueNomState();
+}
+
+class _DialogueNomState extends State<_DialogueNom> {
+  late final TextEditingController _controleur = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controleur.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Changer le nom'),
+      content: TextField(
+        key: const Key('renommer-champ'),
+        controller: _controleur,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(hintText: 'Ex. Tablette du haut'),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Annuler')),
+        FilledButton(
+          key: const Key('renommer-ok'),
+          onPressed: () => Navigator.of(context).pop(_controleur.text),
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}
+
 class _PageDetail extends StatefulWidget {
   const _PageDetail({required this.meuble, required this.chemin, this.apresType});
 
@@ -36,7 +93,7 @@ class _PageDetailState extends State<_PageDetail> {
 
   String get _ici => widget.chemin.isEmpty ? m.nom : '${widget.chemin} › ${m.nom}';
 
-  String _cle(String quoi) => '${m.nom}-$quoi';
+  String _cle(String quoi) => '${m.base}-$quoi';
 
   Future<void> _ouvrir(Meuble enfant) async {
     await ouvrirDetail(
@@ -46,6 +103,10 @@ class _PageDetailState extends State<_PageDetail> {
       apresType: m.genre == GenreMeuble.armoires ? () => m.renumeroterUnites() : null,
     );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _renommer(Meuble enfant) async {
+    if (await renommerMeuble(context, enfant) && mounted) setState(() {});
   }
 
   @override
@@ -66,7 +127,24 @@ class _PageDetailState extends State<_PageDetail> {
                     key: const Key('detail-chemin'),
                     style: colors.body(14, FontWeight.w600, color: colors.mute),
                   ),
-                if (m.genre == GenreMeuble.unite) ..._unite(colors) else ..._questions(),
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: ValueKey('detail-nom-${identityHashCode(m)}-${m.renomme ? '' : m.nom}'),
+                  initialValue: m.nom,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: colors.body(16, FontWeight.w700),
+                  decoration: InputDecoration(
+                    labelText: m.genre == GenreMeuble.unite ? 'Nom de l’unité' : 'Nom',
+                    suffixIcon: const Icon(Icons.edit_outlined, size: 18),
+                  ),
+                  onChanged: (value) {
+                    m.nom = value;
+                    m.renomme = true;
+                  },
+                ),
+                if (m.genre == GenreMeuble.unite) ..._typeUnite(),
+                const SizedBox(height: 10),
+                ..._questions(colors),
                 ..._liste(colors),
               ],
             ),
@@ -86,24 +164,8 @@ class _PageDetailState extends State<_PageDetail> {
     );
   }
 
-  /// Unité d’armoire : son nom, son type, puis ses questions.
-  List<Widget> _unite(_Couleurs colors) {
+  List<Widget> _typeUnite() {
     return [
-      const SizedBox(height: 8),
-      TextFormField(
-        key: ValueKey('unite-nom-${identityHashCode(m)}-${m.renomme ? '' : m.nom}'),
-        initialValue: m.nom,
-        textCapitalization: TextCapitalization.sentences,
-        style: colors.body(16, FontWeight.w700),
-        decoration: const InputDecoration(
-          labelText: 'Nom de l’unité',
-          suffixIcon: Icon(Icons.edit_outlined, size: 18),
-        ),
-        onChanged: (value) {
-          m.nom = value;
-          m.renomme = true;
-        },
-      ),
       const SizedBox(height: 14),
       _Titre('Type d’unité'),
       const SizedBox(height: 8),
@@ -124,25 +186,48 @@ class _PageDetailState extends State<_PageDetail> {
             ),
         ],
       ),
-      const SizedBox(height: 10),
-      ..._questions(),
     ];
   }
 
-  List<Widget> _questions() {
+  Widget _tablettes(_Couleurs colors) {
+    final espaces = nomsEspaces(m.espaces.length);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Compteur(
+          'Tablettes',
+          m.tablettes,
+          (v) => setState(() => m.ajusterTablettes(v)),
+          max: 20,
+          cle: _cle('tablettes'),
+        ),
+        Text(
+          m.tablettes == 0
+              ? 'Chaque tablette crée un espace de plus : 2 tablettes = 3 espaces (Bas, Centre, Haut).'
+              : '${m.tablettes} tablette${m.tablettes > 1 ? 's' : ''} = ${m.espaces.length} espaces : ${espaces.join(', ')}.',
+          key: Key('${_cle('espaces')}-aide'),
+          style: colors.body(13.5, FontWeight.w500, color: colors.mute),
+        ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  List<Widget> _questions(_Couleurs colors) {
     void maj(VoidCallback f) => setState(f);
+    final tiroirs = _Compteur(
+      'Tiroirs',
+      m.tiroirs.length,
+      (v) => maj(() => m.ajusterTiroirs(v)),
+      max: 12,
+      cle: _cle('tiroirs'),
+    );
     switch (m.genre) {
       case GenreMeuble.bureau:
         return [
-          _Compteur(
-            'Tiroirs',
-            m.tiroirs.length,
-            (v) => maj(() => m.ajusterTiroirs(v)),
-            max: 12,
-            cle: _cle('tiroirs'),
-          ),
-          _OuiNon('Dessus', m.dessus, (v) => maj(() => m.dessus = v), cle: _cle('dessus')),
-          _OuiNon('Dessous', m.dessous, (v) => maj(() => m.dessous = v), cle: _cle('dessous')),
+          tiroirs,
+          _OuiNon('Dessus', m.dessus != null, (v) => maj(() => m.changerDessus(v)), cle: _cle('dessus')),
+          _OuiNon('Dessous', m.dessous != null, (v) => maj(() => m.changerDessous(v)), cle: _cle('dessous')),
         ];
       case GenreMeuble.armoires:
         return [
@@ -155,43 +240,26 @@ class _PageDetailState extends State<_PageDetail> {
           ),
           _Compteur(
             'Comptoirs',
-            m.comptoirs,
-            (v) => maj(() => m.comptoirs = v),
+            m.comptoirs.length,
+            (v) => maj(() => m.ajusterComptoirs(v)),
             max: 6,
             cle: _cle('comptoirs'),
           ),
         ];
       case GenreMeuble.unite:
-        if (m.estGardeManger) {
-          return [
-            _Compteur(
-              'Sections',
-              m.sections.length,
-              (v) => maj(() => m.ajusterSections(v)),
-              min: 1,
-              max: 5,
-              cle: _cle('sections'),
-            ),
-          ];
-        }
-        return [
-          _Compteur(
-            'Tablettes',
-            m.tablettes.length,
-            (v) => maj(() => m.ajusterTablettes(v)),
-            max: 12,
-            cle: _cle('tablettes'),
-          ),
-          _Compteur(
-            'Tiroirs',
-            m.tiroirs.length,
-            (v) => maj(() => m.ajusterTiroirs(v)),
-            max: 12,
-            cle: _cle('tiroirs'),
-          ),
-        ];
+        return [_tablettes(colors), tiroirs];
       case GenreMeuble.simple:
         return [
+          _tablettes(colors),
+          if (m.aDesTringles)
+            _Compteur(
+              'Tringles',
+              m.tringles.length,
+              (v) => maj(() => m.ajusterTringles(v)),
+              max: 6,
+              cle: _cle('tringles'),
+            ),
+          tiroirs,
           _Compteur(
             'Compartiments',
             m.compartiments.length,
@@ -199,37 +267,15 @@ class _PageDetailState extends State<_PageDetail> {
             max: 12,
             cle: _cle('compartiments'),
           ),
-          _Compteur(
-            'Tablettes',
-            m.tablettes.length,
-            (v) => maj(() => m.ajusterTablettes(v)),
-            max: 12,
-            cle: _cle('tablettes'),
-          ),
-          _Compteur(
-            'Tiroirs',
-            m.tiroirs.length,
-            (v) => maj(() => m.ajusterTiroirs(v)),
-            max: 12,
-            cle: _cle('tiroirs'),
-          ),
         ];
     }
   }
 
-  /// Ce qui sera créé à l’intérieur ; chaque ligne se détaille à son tour.
+  /// Ce qui sera créé à l’intérieur : chaque nom se change (crayon) et chaque
+  /// espace, tiroir ou unité se détaille à son tour.
   List<Widget> _liste(_Couleurs colors) {
     final enfants = m.sousRangements;
-    // Même ordre que dans l’arbre : dessus et comptoirs, puis le reste,
-    // puis dessous.
-    final feuilles = <String>[
-      if (m.genre == GenreMeuble.bureau && m.dessus) 'Dessus',
-      if (m.comptoirs == 1) 'Comptoir',
-      if (m.comptoirs > 1)
-        for (var i = 1; i <= m.comptoirs; i++) 'Comptoir $i',
-    ];
-    final apres = <String>[if (m.genre == GenreMeuble.bureau && m.dessous) 'Dessous'];
-    if (enfants.isEmpty && feuilles.isEmpty && apres.isEmpty) {
+    if (enfants.isEmpty) {
       return [
         const SizedBox(height: 14),
         Text(
@@ -242,20 +288,12 @@ class _PageDetailState extends State<_PageDetail> {
     }
     return [
       const SizedBox(height: 18),
-      _Titre(m.genre == GenreMeuble.armoires ? 'Unités et comptoirs' : 'À l’intérieur'),
+      _Titre('À l’intérieur'),
       Text(
-        'Touchez un élément pour le détailler à son tour.',
+        'Touchez le crayon pour changer un nom (ex. « Tablette du haut »), ou un élément pour le détailler.',
         style: colors.body(14, FontWeight.w500, color: colors.mute),
       ),
       const SizedBox(height: 8),
-      for (final nom in feuilles)
-        Card(
-          elevation: 0,
-          color: colors.soft,
-          margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: ListTile(title: Text(nom, style: colors.body(16, FontWeight.w700))),
-        ),
       for (final enfant in enfants)
         Card(
           key: Key('sous-${enfant.nom}'),
@@ -264,19 +302,23 @@ class _PageDetailState extends State<_PageDetail> {
           margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           child: ListTile(
+            contentPadding: const EdgeInsets.only(left: 16, right: 4),
             title: Text(enfant.nom, style: colors.body(16, FontWeight.w700)),
-            subtitle: enfant.resume.isEmpty || enfant.resume == enfant.nom ? null : Text(enfant.resume),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _ouvrir(enfant),
+            subtitle: enfant.resume.isEmpty ? null : Text(enfant.resume),
+            onTap: () => m.detaillable(enfant) ? _ouvrir(enfant) : _renommer(enfant),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  key: Key('renommer-${enfant.nom}'),
+                  tooltip: 'Changer le nom',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _renommer(enfant),
+                ),
+                if (m.detaillable(enfant)) const Icon(Icons.chevron_right),
+              ],
+            ),
           ),
-        ),
-      for (final nom in apres)
-        Card(
-          elevation: 0,
-          color: colors.soft,
-          margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: ListTile(title: Text(nom, style: colors.body(16, FontWeight.w700))),
         ),
     ];
   }

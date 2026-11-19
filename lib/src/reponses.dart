@@ -185,11 +185,27 @@ enum TypeDomicile {
   bool get complet => this == TypeDomicile.domicile || this == TypeDomicile.chalet;
 }
 
+/// Nom proposé pour le n-ième étage habitable, du plus bas au plus haut.
 String nomEtage(int numero) => switch (numero) {
   1 => 'Rez-de-chaussée',
-  2 => '2e étage',
+  2 => 'Deuxième étage',
+  3 => 'Troisième étage',
+  4 => 'Quatrième étage',
   _ => '${numero}e étage',
 };
+
+/// Noms offerts d’un toucher pour nommer un étage (on peut aussi écrire).
+const kChoixEtages = <String>[
+  'Sous-sol',
+  'Rez-de-chaussée',
+  'Premier étage',
+  'Deuxième étage',
+  'Troisième étage',
+  'Quatrième étage',
+  'Mezzanine',
+];
+
+bool _estSousSol(String nom) => nom.trim().toLowerCase().startsWith('sous-sol');
 
 /// Réponses de l’assistant ; [arbre] produit l’arbre du domicile.
 class ReponsesDomicile {
@@ -213,11 +229,17 @@ class ReponsesDomicile {
   final List<String> autresExterieur = <String>[];
 
   // Maison
+  /// Nombre d’étages habitables (sous-sol aménagé compris s’il y en a un).
   int etages = 1;
-  int habitables = 1;
+
+  /// Nom de chaque étage habitable, du plus bas au plus haut.
+  final List<String> nomsEtages = <String>[nomEtage(1)];
+
+  /// Pièces non habitables, en plus des étages.
   bool grenier = false;
+
+  /// « Cave de service ».
   bool cave = false;
-  bool sousSol = false;
 
   // Garage
   bool garage = false;
@@ -240,36 +262,55 @@ class ReponsesDomicile {
     }
   }
 
+  /// Change le nombre d’étages habitables ; les noms déjà choisis restent.
   void changerEtages(int valeur) {
-    final suivait = habitables == etages;
     etages = valeur.clamp(1, 9);
-    if (suivait || habitables > etages) habitables = etages;
+    if (nomsEtages.length > etages) nomsEtages.removeRange(etages, nomsEtages.length);
+    while (nomsEtages.length < etages) {
+      nomsEtages.add(nomEtage(nomsEtages.length + 1));
+    }
   }
 
-  void changerHabitables(int valeur) => habitables = valeur.clamp(0, etages);
+  void nommerEtage(int index, String nom) {
+    if (index < 0 || index >= nomsEtages.length) return;
+    nomsEtages[index] = nom;
+    _niveaux['etage-${index + 1}']?.nom = nom;
+  }
 
-  /// Niveaux de la maison, du bas vers le haut. Les réponses déjà données sont
-  /// gardées si on revient en arrière et qu’on change le nombre d’étages.
+  String _nomNiveau(int index) {
+    final nom = nomsEtages[index].trim();
+    return nom.isEmpty ? nomEtage(index + 1) : nom;
+  }
+
+  /// Étages habitables, du plus bas au plus haut. Les pièces déjà choisies
+  /// sont gardées si on revient en arrière et qu’on change le nombre.
   List<Niveau> get niveaux {
     final liste = <Niveau>[];
-    if (sousSol) {
-      liste.add(_niveaux.putIfAbsent('sous-sol', () => Niveau('sous-sol', 'Sous-sol')));
-    }
-    for (var i = 1; i <= etages; i++) {
-      final niveau = _niveaux.putIfAbsent('etage-$i', () => Niveau('etage-$i', nomEtage(i)));
-      niveau.habitable = i <= habitables;
+    for (var i = 0; i < etages; i++) {
+      final niveau = _niveaux.putIfAbsent('etage-${i + 1}', () => Niveau('etage-${i + 1}', _nomNiveau(i)));
+      niveau
+        ..nom = _nomNiveau(i)
+        ..habitable = true;
       liste.add(niveau);
     }
     return liste;
   }
 
-  /// Pièces proposées la première fois qu’on ouvre un niveau (tout se retire).
+  /// Pièces proposées la première fois qu’on ouvre un étage (tout se retire).
+  /// L’étage principal (le rez-de-chaussée, sinon le premier étage qui n’est
+  /// pas un sous-sol) reçoit l’entrée, la cuisine, le salon…
   void preremplir(Niveau niveau) {
     if (niveau.initialise) return;
     niveau.initialise = true;
-    if (!type.complet || !niveau.habitable || niveau.cle == 'sous-sol') return;
-    final unSeul = etages == 1;
-    if (niveau.cle == 'etage-1') {
+    if (!type.complet || _estSousSol(niveau.nom)) return;
+    final liste = niveaux;
+    final horsSousSol = liste.where((n) => !_estSousSol(n.nom)).toList();
+    final principal = horsSousSol.firstWhere(
+      (n) => n.nom.trim().toLowerCase() == 'rez-de-chaussée',
+      orElse: () => horsSousSol.first,
+    );
+    final unSeul = horsSousSol.length == 1;
+    if (identical(niveau, principal)) {
       for (final id in ['entree', 'cuisine', 'salon', 'salle-a-manger']) {
         niveau.ajuster(typePiece(id), 1);
       }
@@ -351,18 +392,11 @@ class ReponsesDomicile {
       noeuds.addAll(pieces(liste.single));
     } else {
       for (final niveau in liste) {
-        noeuds.add(
-          NoeudDomicile(
-            type: TypeNoeud.etage,
-            nom: niveau.nom,
-            description: niveau.habitable ? null : 'Étage non habitable',
-            enfants: pieces(niveau),
-          ),
-        );
+        noeuds.add(NoeudDomicile(type: TypeNoeud.etage, nom: niveau.nom, enfants: pieces(niveau)));
       }
     }
     if (grenier) noeuds.add(NoeudDomicile(type: TypeNoeud.etage, nom: 'Grenier'));
-    if (cave) noeuds.add(NoeudDomicile(type: TypeNoeud.etage, nom: 'Cave'));
+    if (cave) noeuds.add(NoeudDomicile(type: TypeNoeud.etage, nom: 'Cave de service'));
     return noeuds;
   }
 

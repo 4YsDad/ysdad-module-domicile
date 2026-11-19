@@ -14,10 +14,13 @@ void main() {
           ..mezzanines = 2
           ..murs = 3
           ..etabli = true
-          ..sousSol = true
-          ..grenier = true;
-    r.changerEtages(2);
-    r.changerHabitables(2);
+          ..grenier = true
+          ..cave = true;
+    r.changerEtages(3);
+    r
+      ..nommerEtage(0, 'Sous-sol')
+      ..nommerEtage(1, 'Rez-de-chaussée')
+      ..nommerEtage(2, 'Deuxième étage');
     for (final niveau in r.niveaux) {
       r.preremplir(niveau);
     }
@@ -33,7 +36,14 @@ void main() {
     ]);
     expect(ext.enfants[1].enfants.map((n) => n.nom), ['Galerie', 'Remise 1', 'Remise 2']);
     final interieur = arbre.enfants[1];
-    expect(interieur.enfants.map((n) => n.nom), ['Sous-sol', 'Rez-de-chaussée', '2e étage', 'Grenier']);
+    expect(interieur.enfants.map((n) => n.nom), [
+      'Sous-sol',
+      'Rez-de-chaussée',
+      'Deuxième étage',
+      'Grenier',
+      'Cave de service',
+    ]);
+    expect(interieur.enfants[0].enfants, isEmpty, reason: 'sous-sol : pas de pièces imposées');
     final rez = interieur.enfants[1];
     expect(rez.type, TypeNoeud.etage);
     final cuisine = rez.enfants.firstWhere((n) => n.nom == 'Cuisine');
@@ -66,7 +76,12 @@ void main() {
     final r = ReponsesDomicile()..exterieur = false;
     expect(r.arbre().total, 1);
     r.changerEtages(3);
-    expect(r.habitables, 3);
+    expect(r.nomsEtages, ['Rez-de-chaussée', 'Deuxième étage', 'Troisième étage']);
+    r.nommerEtage(1, 'Premier étage');
+    r.changerEtages(2);
+    expect(r.niveaux.map((n) => n.nom), ['Rez-de-chaussée', 'Premier étage']);
+    r.changerEtages(1);
+    expect(r.niveaux.length, 1, reason: 'aucun étage en double');
   });
 
   test('renommer une pièce la garde hors de la renumérotation', () {
@@ -152,7 +167,7 @@ void main() {
     await suivant(); // → rez
     expect(find.text('Pièces · Rez-de-chaussée'), findsOneWidget);
     await suivant(); // → 2e
-    expect(find.text('Pièces · 2e étage'), findsOneWidget);
+    expect(find.text('Pièces · Deuxième étage'), findsOneWidget);
     await suivant(); // → garage
     await tester.tap(find.descendant(of: find.byKey(const Key('q-garage')), matching: find.text('Oui')));
     await tester.pumpAndSettle();
@@ -240,8 +255,8 @@ void main() {
     expect(bureau.genre, GenreMeuble.bureau);
     bureau
       ..ajusterTiroirs(3)
-      ..dessus = true
-      ..dessous = true;
+      ..changerDessus(true)
+      ..changerDessous(true);
     bureau.tiroirs[1].ajusterCompartiments(2);
     final noeud = bureau.noeud();
     expect(noeud.enfants.map((n) => n.nom), ['Dessus', 'Tiroir 1', 'Tiroir 2', 'Tiroir 3', 'Dessous']);
@@ -250,26 +265,60 @@ void main() {
     expect(bureau.noeud().enfants.map((n) => n.nom), ['Dessus', 'Tiroir 1', 'Dessous']);
   });
 
-  test('armoires : unités par type, garde-manger en sections, comptoirs', () {
+  test('règle des espaces : N tablettes donnent N + 1 espaces nommés du bas vers le haut', () {
+    expect(nomsEspaces(1), isEmpty);
+    expect(nomsEspaces(2), ['Bas', 'Haut']);
+    expect(nomsEspaces(3), ['Bas', 'Centre', 'Haut']);
+    expect(nomsEspaces(4), ['Bas', 'Centre-bas', 'Centre-haut', 'Haut']);
+    expect(nomsEspaces(5), ['Bas', 'Centre-bas', 'Centre', 'Centre-haut', 'Haut']);
+    expect(nomsEspaces(7), ['Bas', 'Centre 1', 'Centre 2', 'Centre 3', 'Centre 4', 'Centre 5', 'Haut']);
+    final biblio = Meuble('Bibliothèque');
+    expect(biblio.noeud().enfants, isEmpty, reason: 'sans tablette : un seul espace, le meuble');
+    biblio.ajusterTablettes(2);
+    expect(biblio.noeud().enfants.map((n) => n.nom), ['Bas', 'Centre', 'Haut']);
+    biblio.espaces.last
+      ..nom = 'Tablette du haut'
+      ..renomme = true;
+    biblio.ajusterTablettes(3);
+    expect(biblio.noeud().enfants.map((n) => n.nom), [
+      'Bas',
+      'Centre-bas',
+      'Centre-haut',
+      'Tablette du haut',
+    ]);
+  });
+
+  test('garde-robe : tringles ; les autres rangements n’en ont pas', () {
+    final garde = Meuble('Garde-robe 2', base: 'Garde-robe');
+    expect(garde.aDesTringles, isTrue);
+    expect(Meuble('Penderie').aDesTringles, isTrue);
+    expect(Meuble('Commode').aDesTringles, isFalse);
+    garde
+      ..ajusterTablettes(1)
+      ..ajusterTringles(2);
+    expect(garde.noeud().enfants.map((n) => n.nom), ['Bas', 'Haut', 'Tringle 1', 'Tringle 2']);
+  });
+
+  test('armoires : unités par type, garde-manger selon la règle des espaces, comptoirs', () {
     final armoires = Meuble('Armoires');
     expect(armoires.genre, GenreMeuble.armoires);
     armoires
       ..ajusterUnites(3)
-      ..comptoirs = 1;
+      ..ajusterComptoirs(1);
     armoires.unites[0].changerType(TypeUnite.gardeManger);
     armoires.unites[2].changerType(TypeUnite.uniteTiroirs);
     armoires.renumeroterUnites();
     expect(armoires.unites.map((u) => u.nom), ['Garde-manger', 'Armoire du bas', 'Unité de tiroirs']);
-    expect(armoires.unites[0].sections.map((s) => s.nom), ['Bas', 'Centre', 'Haut']);
-    armoires.unites[0].ajusterSections(5);
-    expect(armoires.unites[0].sections.map((s) => s.nom), [
+    expect(armoires.unites[0].espaces.map((s) => s.nom), ['Bas', 'Centre', 'Haut']);
+    armoires.unites[0].ajusterTablettes(4);
+    expect(armoires.unites[0].espaces.map((s) => s.nom), [
       'Bas',
       'Centre-bas',
       'Centre',
       'Centre-haut',
       'Haut',
     ]);
-    armoires.unites[1].ajusterTablettes(2);
+    armoires.unites[1].ajusterTablettes(1);
     final noeud = armoires.noeud();
     expect(noeud.enfants.map((n) => n.nom), [
       'Comptoir',
@@ -277,9 +326,8 @@ void main() {
       'Armoire du bas',
       'Unité de tiroirs',
     ]);
-    expect(noeud.enfants[2].enfants.map((n) => n.nom), ['Tablette 1', 'Tablette 2']);
+    expect(noeud.enfants[2].enfants.map((n) => n.nom), ['Bas', 'Haut']);
     expect(noeud.enfants[3].enfants.map((n) => n.nom), ['Tiroir 1', 'Tiroir 2', 'Tiroir 3']);
-    expect(nomsSections(4), ['Bas', 'Centre-bas', 'Centre-haut', 'Haut']);
   });
 
   testWidgets('« + Contenant » ajoute d’un toucher ou au clavier', (tester) async {
@@ -391,7 +439,7 @@ void main() {
     await toucher(find.byKey(const Key('sous-Armoire du bas 1')));
     expect(find.text('Détailler · Armoire du bas 1'), findsOneWidget);
     await toucher(find.byKey(const Key('type-gardeManger')));
-    expect(find.byKey(const Key('valeur-Garde-manger-sections')), findsOneWidget);
+    expect(find.byKey(const Key('Armoire du bas-espaces-aide')), findsOneWidget);
     await toucher(find.byKey(const Key('detail-ok')));
     expect(find.byKey(const Key('sous-Garde-manger')), findsOneWidget);
     expect(find.byKey(const Key('sous-Armoire du bas')), findsOneWidget);
@@ -409,7 +457,7 @@ void main() {
     await toucher(find.descendant(of: find.byKey(const Key('q-Bureau-dessus')), matching: find.text('Oui')));
     await toucher(find.byKey(const Key('sous-Tiroir 2')));
     expect(find.text('Détailler · Tiroir 2'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('plus-Tiroir 2-compartiments')));
+    await tester.tap(find.byKey(const Key('plus-Tiroir-compartiments')));
     await tester.pumpAndSettle();
     await toucher(find.byKey(const Key('detail-ok')));
     await toucher(find.byKey(const Key('detail-ok')));
@@ -425,5 +473,77 @@ void main() {
     expect(n('Garde-manger').enfants.map((x) => x.nom), ['Bas', 'Centre', 'Haut']);
     expect(n('Bureau').enfants.map((x) => x.nom), ['Dessus', 'Tiroir 1', 'Tiroir 2']);
     expect(n('Tiroir 2').enfants.map((x) => x.nom), ['Compartiment 1']);
+  });
+
+  testWidgets('étages nommés, tringles, espaces et noms modifiables', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    ResultatDomicile? resultat;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => TextButton(
+                onPressed: () async => resultat = await ouvrirAssistantDomicile(context),
+                child: const Text('go'),
+              ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    Future<void> toucher(Finder f) async {
+      await tester.scrollUntilVisible(f, 300, scrollable: find.byType(Scrollable).first);
+      await tester.runAsync(() => Scrollable.ensureVisible(tester.element(f), alignment: 0.5));
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> suivant() async {
+      await tester.tap(find.byKey(const Key('assistant-next')));
+      await tester.pumpAndSettle();
+    }
+
+    await suivant(); // extérieur
+    await suivant(); // maison
+    expect(find.text('Combien d’étages habitables y a-t-il ?'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('plus-etages')));
+    await tester.pumpAndSettle();
+    await toucher(find.byKey(const Key('etage-0-Sous-sol')));
+    await toucher(find.byKey(const Key('etage-1-Rez-de-chaussée')));
+    expect(find.text('Cave de service'), findsOneWidget);
+    await suivant();
+    expect(find.text('Pièces · Sous-sol'), findsOneWidget);
+    await suivant();
+    expect(find.text('Pièces · Rez-de-chaussée'), findsOneWidget);
+    await toucher(find.byKey(const Key('el-Entrée-Garde-robe')));
+    expect(find.text('Détailler · Garde-robe'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('plus-Garde-robe-tringles')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('plus-Garde-robe-tablettes')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('plus-Garde-robe-tablettes')));
+    await tester.pumpAndSettle();
+    expect(find.text('2 tablettes = 3 espaces : Bas, Centre, Haut.'), findsOneWidget);
+    await toucher(find.byKey(const Key('renommer-Haut')));
+    await tester.enterText(find.byKey(const Key('renommer-champ')), 'Tablette des chapeaux');
+    await tester.tap(find.byKey(const Key('renommer-ok')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Tablette des chapeaux'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await toucher(find.byKey(const Key('detail-ok')));
+    await suivant(); // garage
+    await suivant(); // résumé
+    await tester.tap(find.byKey(const Key('assistant-create')));
+    await tester.pumpAndSettle();
+    final interieur = resultat!.arbre.enfants.firstWhere((n) => n.nom == 'Intérieur');
+    expect(interieur.enfants.map((n) => n.nom).take(2), ['Sous-sol', 'Rez-de-chaussée']);
+    final garde = resultat!.arbre.parcourir().firstWhere((e) => e.noeud.nom == 'Garde-robe').noeud;
+    expect(garde.enfants.map((n) => n.nom), ['Bas', 'Centre', 'Tablette des chapeaux', 'Tringle 1']);
   });
 }
