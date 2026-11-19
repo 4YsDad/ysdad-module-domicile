@@ -220,14 +220,16 @@ class _PageDetailState extends State<_PageDetail> {
   /// Ce qui sera créé à l’intérieur ; chaque ligne se détaille à son tour.
   List<Widget> _liste(_Couleurs colors) {
     final enfants = m.sousRangements;
+    // Même ordre que dans l’arbre : dessus et comptoirs, puis le reste,
+    // puis dessous.
     final feuilles = <String>[
       if (m.genre == GenreMeuble.bureau && m.dessus) 'Dessus',
       if (m.comptoirs == 1) 'Comptoir',
       if (m.comptoirs > 1)
         for (var i = 1; i <= m.comptoirs; i++) 'Comptoir $i',
-      if (m.genre == GenreMeuble.bureau && m.dessous) 'Dessous',
     ];
-    if (enfants.isEmpty && feuilles.isEmpty) {
+    final apres = <String>[if (m.genre == GenreMeuble.bureau && m.dessous) 'Dessous'];
+    if (enfants.isEmpty && feuilles.isEmpty && apres.isEmpty) {
       return [
         const SizedBox(height: 14),
         Text(
@@ -267,6 +269,14 @@ class _PageDetailState extends State<_PageDetail> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _ouvrir(enfant),
           ),
+        ),
+      for (final nom in apres)
+        Card(
+          elevation: 0,
+          color: colors.soft,
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: ListTile(title: Text(nom, style: colors.body(16, FontWeight.w700))),
         ),
     ];
   }

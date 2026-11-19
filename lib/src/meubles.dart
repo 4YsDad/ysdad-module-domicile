@@ -205,7 +205,8 @@ class Meuble {
     return NoeudDomicile(
       type: TypeNoeud.rangement,
       nom: nomPropre,
-      description: genre == GenreMeuble.unite && nomPropre != typeUnite.libelle ? typeUnite.libelle : null,
+      description:
+          genre == GenreMeuble.unite && renomme && nomPropre != typeUnite.libelle ? typeUnite.libelle : null,
       enfants: enfants,
     );
   }
@@ -236,9 +237,12 @@ class GroupeRangement {
     while (instances.length < n) {
       instances.add(Meuble(base));
     }
+    // « Tiroirs × 3 » donne Tiroir 1, Tiroir 2, Tiroir 3 (un mot au pluriel).
+    final unMot = !base.contains(' ') && base.length > 3 && base.endsWith('s');
+    final singulier = unMot ? base.substring(0, base.length - 1) : base;
     for (var i = 0; i < instances.length; i++) {
       if (instances[i].renomme) continue;
-      instances[i].nom = instances.length == 1 ? base : '$base ${i + 1}';
+      instances[i].nom = instances.length == 1 ? base : '$singulier ${i + 1}';
     }
   }
 }

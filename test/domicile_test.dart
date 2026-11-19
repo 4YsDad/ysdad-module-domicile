@@ -205,10 +205,10 @@ void main() {
     expect(piece.ajouterContenant('Tiroir')!.nom, 'Tiroir');
     expect(piece.ajouterContenant('Tiroir')!.nom, 'Tiroir 2');
     expect(piece.ajouterContenant('  Coffre à outils ')!.nom, 'Coffre à outils');
-    expect(piece.ajouterContenant('Armoires')!.nom, 'Armoires 2');
+    expect(piece.ajouterContenant('Armoires')!.nom, 'Armoire 2');
     expect(piece.rangements, [
-      'Armoires 1',
-      'Armoires 2',
+      'Armoire 1',
+      'Armoire 2',
       'Tiroirs',
       'Tiroir sous la cuisinière',
       'Tiroir 1',
